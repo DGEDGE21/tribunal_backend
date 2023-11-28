@@ -33,9 +33,11 @@ class Pedidos_Quitacao(models.Model):
     estado_info = models.CharField(null=False, max_length=1000,default="processamento")
     estado_info_inter = models.CharField(null=False, max_length=1000, default="processamento")
     data_submisao=models.DateField(auto_now_add=True)
-    tipo_pedido=models.CharField(null=False, max_length=1000, default="Atestado Medico")
     tipo=models.CharField(null=False, max_length=1000, default="green")
     revisto=models.CharField(null=False, max_length=1000, default="0")
+    assinalado=models.CharField(null=False, max_length=2, default="0")
+    assinalado_er = models.CharField(null=False, max_length=2, default="0")
+    user=models.ForeignKey(User, on_delete=models.CASCADE, default=1)
     history = HistoricalRecords()
 
 
@@ -69,4 +71,9 @@ class Empresa_Quitacao(models.Model):
     idQuitacao=models.ForeignKey(Quitacao, null=True, on_delete=models.SET_NULL)
     history = HistoricalRecords()
 
+class Empresa_Atencedentes(models.Model):
+    idAntecedente= models.BigAutoField(primary_key=True)
+    idEmpresa = models.ForeignKey(Empresa, null=True, on_delete=models.SET_NULL)
+    info=models.CharField(null=False, max_length=1000)
+    data_submisao=models.DateField(auto_now_add=True)
 

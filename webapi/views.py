@@ -56,7 +56,7 @@ class LoginAPI(KnoxLoginView):
 
         ope = 1
 
-        if grupo!="tribunal" and grupo!="operario":
+        if grupo!="tribunal" and grupo!="operario" and grupo!="arquivo" :
             ope = Empresa.objects.get(user=user.id)
             ope = ope.Representante
         nuit = '2323'
@@ -65,8 +65,6 @@ class LoginAPI(KnoxLoginView):
 
 
 class Registar_Empresa(generics.CreateAPIView):
-    authentication_classes = [TokenAuthentication]
-    permission_classes = [IsAuthenticated]
     queryset = Empresa.objects.all()
     serializer_class = RegisterSerializer
 
@@ -102,13 +100,13 @@ class Registar_Empresa(generics.CreateAPIView):
         gg = Group.objects.get(name="empresa")
         gg.user_set.add(user)
 
-        ss = EmailMessage('Bem vindo ao Portal do Tribunal Supremo',
-                            "Para aceder ao Portal use as seguintes credencias\n"
-                                                                       f"usuario:{username}\n"
-                                                                       f"password:{password}",
-                          to=['anisio.2000g@gmail.com'])
+       # ss = EmailMessage('Bem vindo ao Portal do Tribunal Supremo',
+        #                    "Para aceder ao Portal use as seguintes credencias\n"
+        #                                                               f"usuario:{username}\n"
+        #                                                               f"password:{password}",
+         #                 to=['anisio.2000g@gmail.com'])
 
-        ss.send()
+        #ss.send()
 
         n=Empresa.objects.create(
             nome=info['nome_empresa'],
@@ -210,7 +208,7 @@ class Marcar_Quitacao(generics.CreateAPIView):
 
     def post(self, request, *args, **kwargs):
         company = Empresa.objects.get(user=int(self.request.user.id))
-        company_s_q = Pedidos_Quitacao.objects.create(idEmpresa=company,estado=1,tipo_pedido=self.request.data['informa'])
+        company_s_q = Pedidos_Quitacao.objects.create(idEmpresa=company,estado=1)
         company_s_q.save()
         #0--PENDENTE PAGAMENTO
         #1--EM PRODUÇÃO
@@ -275,10 +273,8 @@ class Todos_Pedidos_Empresa_por_rever(generics.CreateAPIView):
     queryset = Pedidos_Quitacao.objects.all()
     serializer_class = Pedido_Quitacao_Serializado
 
-
-
     def post(self, request, *args, **kwargs):
-        ped=Pedidos_Quitacao.objects.filter(revisto="0")
+        ped=Pedidos_Quitacao.objects.filter(revisto="0",assinalado="0")
         ped_lista=list()
         for l in ped:
             ped_s=Pedido_Quitacao_Serializado(l).data
@@ -286,8 +282,16 @@ class Todos_Pedidos_Empresa_por_rever(generics.CreateAPIView):
             compay=Empresa.objects.get(idEmpresa=int(ped_s['idEmpresa']))
             compay_s=Empresa_Serializado(compay).data
             compay_s.update(ped_s)
-            ped_lista.append(compay_s)
+            comp_ant=Empresa_Atencedentes.objects.filter(idEmpresa=int(ped_s['idEmpresa']))
+            comp_ant_s=Empresa_Atencedentes_Serializado(comp_ant,many=True).data
+            if comp_ant_s!=[]:
+              compay_s.update({"color":"red","info" :"Processo judicial Correndo"})
+            else:
+                compay_s.update({"color": "green", "info": "Sem Processo judicial"})
 
+
+            ped_lista.append(compay_s)
+            print(ped_lista)
 
         return Response(ped_lista)
 
@@ -305,6 +309,17 @@ class Pesquisar_Empresa(generics.CreateAPIView):
         company_emp_s=Empresa_Serializado(company_emp).data
 
         company_emp_s.update(company_s)
+        return Response(company_emp_s)
+
+class Pesquisar_Empresas_funcionario(generics.CreateAPIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+    queryset = Pedidos_Quitacao.objects.all()
+    serializer_class = Pedido_Quitacao_Serializado
+
+    def post(self, request, *args, **kwargs):
+        company_emp = Empresa.objects.get(idEmpresa=int(self.request.data['casa']))
+        company_emp_s = Empresa_Serializado(company_emp).data
         return Response(company_emp_s)
 
 class Rever_Habilitar_Quitacao(generics.CreateAPIView):
@@ -376,13 +391,16 @@ class Habilitar_Quitacao(generics.CreateAPIView):
         data_expiracao=f'{localtime().tm_year}-{localtime().tm_mon+3}-{localtime().tm_mday}'
         )
         company_q.save()
-        compay_quitacao=Empresa_Quitacao.objects.create(idEmpresa=Empresa.objects.get(idEmpresa=int(self.request.data['casa'])),
+        emp=company.idEmpresa
+        compay_quitacao=Empresa_Quitacao.objects.create(idEmpresa=Empresa.objects.get(idEmpresa=emp.idEmpresa),
                                                         idQuitacao=company_q)
 
         return Response(status="200")
 
 
 class Get_quitacao(generics.CreateAPIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
     queryset = Pedidos_Quitacao.objects.all()
     serializer_class = Pedido_Quitacao_Serializado
 
@@ -404,5 +422,85 @@ class Get_quitacao(generics.CreateAPIView):
 
 
 
+class Get_empresas(generics.CreateAPIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+    queryset = Pedidos_Quitacao.objects.all()
+    serializer_class = Pedido_Quitacao_Serializado
+    def post(self, request, *args, **kwargs):
+        emp=Empresa.objects.all()
+        emp_s=Empresa_Serializado(emp,many=True).data
+        return Response(emp_s)
+
+class Registar_ocorrecnias_Empresa(generics.CreateAPIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+    queryset = Pedidos_Quitacao.objects.all()
+    serializer_class = Pedido_Quitacao_Serializado
+
+    def post(self, request, *args, **kwargs):
+        antec=Empresa_Atencedentes(idEmpresa=Empresa.objects.get(idEmpresa=self.request.data['Empresa'])
+                                   ,info=self.request.data['texto'])
+        antec.save()
+        return Response({"sd":1})
 
 
+
+class Empresa_Antecentes_lista(generics.CreateAPIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+    queryset = Pedidos_Quitacao.objects.all()
+    serializer_class = Pedido_Quitacao_Serializado
+
+    def post(self, request, *args, **kwargs):
+        company_emp = Empresa.objects.get(idEmpresa=int(self.request.data['casa']))
+        company_emp_s = Empresa_Serializado(company_emp).data
+        company_antc=Empresa_Atencedentes.objects.filter(idEmpresa=company_emp_s['idEmpresa'])
+        company_antc_S=Empresa_Atencedentes_Serializado(company_antc,many=True).data
+
+        company_emp_s.update({'lista':company_antc_S})
+        return Response(company_emp_s)
+class Assinalar_Arquivo_Usurio(generics.CreateAPIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+    queryset = Pedidos_Quitacao.objects.all()
+    serializer_class = Pedido_Quitacao_Serializado
+
+    def post(self, request, *args, **kwargs):
+        print(self.request.data)
+        Assin=Pedidos_Quitacao.objects.get(idPedido=int(self.request.data['idPedido']))
+        Assin.user=User.objects.get(id=int(self.request.data['idUsuario']))
+        Assin.assinalado="1"
+        Assin.assinalado_er="1"
+        Assin.save()
+        return Response({"user":"ok"})
+
+class Gestao_do_Map_arquivo(generics.CreateAPIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+    queryset = Pedidos_Quitacao.objects.all()
+    serializer_class = Pedido_Quitacao_Serializado
+    def post(self, request, *args, **kwargs):
+        emp=Pedidos_Quitacao.objects.filter(user=self.request.user.id,assinalado_er="1")
+        emp_s=Pedido_Quitacao_Serializado(emp,many=True).data
+        l=list()
+        for s in emp_s:
+            epr=Empresa.objects.get(idEmpresa=s['idEmpresa'])
+            epr_s=Empresa_Serializado(epr).data
+            epr_s.update(s)
+            l.append(epr_s)
+        return Response(l)
+
+class Nao_tem_nenhum(generics.CreateAPIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+    queryset = Pedidos_Quitacao.objects.all()
+    serializer_class = Pedido_Quitacao_Serializado
+
+    def post(self, request, *args, **kwargs):
+        emp = Pedidos_Quitacao.objects.get(idPedido=self.request.data['idpedido'])
+        emp.revisto="0"
+        emp.assinalado ="0"
+        emp.assinalado_er="3"
+        emp.save()
+        return Response({"df":"df"})

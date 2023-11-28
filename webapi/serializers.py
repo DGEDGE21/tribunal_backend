@@ -32,3 +32,8 @@ class Empresa_Quitacao_Serializado(serializers.ModelSerializer):
     class Meta:
         model=Empresa_Quitacao
         fields="__all__"
+
+class Empresa_Atencedentes_Serializado(serializers.ModelSerializer):
+    class Meta:
+        model = Empresa_Atencedentes
+        fields = "__all__"
