@@ -97,10 +97,8 @@ CORS_ORIGIN_WHITELIST=[
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'tbs',
-        'USER':'openpg',
-        'PASSWORD':'openpgpwd'
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / "db.sqlite3",
     }
 }
 
